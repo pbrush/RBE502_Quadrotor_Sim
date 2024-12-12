@@ -58,9 +58,11 @@ desired_yawdot  = trajhandle(t).yawdot;
 desired_roll   = (1 / g) * (desired_acc(1) * sin(desired_yaw) - desired_acc(2) * cos(desired_yaw));
 desired_pitch  = (1 / g) * (desired_acc(1) * cos(desired_yaw) + desired_acc(2) * sin(desired_yaw));
 
-% Get desired r_dot and theta_dot
-desired_rolldot   = (1 / g) * ( (desired_jerk(1) * sin(desired_yaw) + desired_acc(1) * desired_yawdot * cos(desired_yaw) ) - ( desired_jerk(1) * cos(desired_yaw) - desired_acc(1) * desired_yawdot * sin(desired_yaw) ) );
-desired_pitchdot  = (1 / g) * ( (desired_jerk(1) * cos(desired_yaw) - desired_acc(1) * desired_yawdot * sin(desired_yaw) ) + ( desired_jerk(1) * sin(desired_yaw) + desired_acc(1) * desired_yawdot * cos(desired_yaw) ) );
+% Get desired r_dot and p_dot
+desired_phidot   = (1 / g) * ( (desired_jerk(1) * sin(desired_yaw) + desired_acc(1) * desired_yawdot * cos(desired_yaw) ) - ( desired_jerk(1) * cos(desired_yaw) - desired_acc(1) * desired_yawdot * sin(desired_yaw) ) );
+desired_thetadot  = (1 / g) * ( (desired_jerk(1) * cos(desired_yaw) - desired_acc(1) * desired_yawdot * sin(desired_yaw) ) + ( desired_jerk(1) * sin(desired_yaw) + desired_acc(1) * desired_yawdot * cos(desired_yaw) ) );
+
+% How do we go to PQRdt's from phidt and thetadt?
 
 % Concatenate desired euler angles and desired angular rates
 desired_euler = [ desired_roll; desired_pitch; desired_yaw ];
@@ -109,9 +111,14 @@ B = [  0      0      0      0;     % xdt
        0      0  1/Iyy      0;     % qdt
        0      0      0  1/Izz;];   % rdt
 
+A = zeros(12);
+B = zeros(12, 4);
+
+
+
 % Q and R
-Q = eye(12);
-R = eye(4);
+Q = diag([1 1 1 1 1 1 1 1 1 1 1 1]);
+R = diag([1 1 1 1]);
 
 % Solve for the gains
 [K, S] = lqr(A, B, Q, R);

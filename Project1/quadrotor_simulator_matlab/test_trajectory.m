@@ -79,6 +79,10 @@ vel_tol  = 0.05; % m/s
 
 x = x0;        % state
 
+% Initialize GIF parameters
+gif_filename = 'quadplot_simulation.gif'; % Name of the GIF file
+delay_time = 0.05; % Time delay between frames in the GIF
+
 %% ************************* RUN SIMULATION *************************
 fprintf('Simulation Running....\n')
 for iter = 1:max_iter
@@ -109,7 +113,18 @@ for iter = 1:max_iter
     set(h_title, 'String', sprintf('iteration: %d, time: %4.2f', iter, time + cstep))
     time = time + cstep; % Update simulation time
     t = toc;
-    %fprintf('the time is %d \n',t)
+
+    % Capture the frame for the GIF
+    frame = getframe(h_fig); % Capture current figure as a frame
+    img = frame2im(frame);
+    [A, map] = rgb2ind(img, 256); % Convert frame to indexed image
+    if iter == 1
+        % First frame initializes the GIF file
+        imwrite(A, map, gif_filename, 'gif', 'LoopCount', Inf, 'DelayTime', delay_time);
+    else
+        % Append subsequent frames
+        imwrite(A, map, gif_filename, 'gif', 'WriteMode', 'append', 'DelayTime', delay_time);
+    end
 
     % Pause to make real-time   
     if (t < cstep)
@@ -118,10 +133,14 @@ for iter = 1:max_iter
 
     % Check termination criteria
     terminate_cond = terminate_check(x, time, stop, pos_tol, vel_tol, time_tol);
-    if terminate_cond
+    if terminate_cond || iter == max_iter
+        fprintf('Finalizing GIF...\n');
+        frame = getframe(h_fig); % Capture the last frame
+        img = frame2im(frame);
+        [A, map] = rgb2ind(img, 256);
+        imwrite(A, map, gif_filename, 'gif', 'WriteMode', 'append', 'DelayTime', delay_time);
         break
     end
-
 end
 
 fprintf('Simulation Finished....\n')

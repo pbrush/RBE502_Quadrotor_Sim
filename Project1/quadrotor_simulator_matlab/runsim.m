@@ -13,7 +13,7 @@ map = load_map('maps/map0.txt', 0.1, 1.0, 0.25);
 % stop  = {[5.0 10.0 3.0]};
 % start = {[2.0  -2.0 1.0]};%map1
 % stop  = {[8.0 18.0 2.5]};
-start = {[2.0 2.0 2.0]}; %map0
+start = {[0 -2.0 2.0]}; %map0
 stop  = {[0.0 0.0 0.0]};
 nquad = length(start);
 
