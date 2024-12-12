@@ -18,7 +18,7 @@ persistent icnt;
 %% Parameter Initialization
 
 if ~isempty(t)
-desired_state = trajhandle(t, qn);
+    desired_state = trajhandle(t, qn);
 end
 
 F = 0;

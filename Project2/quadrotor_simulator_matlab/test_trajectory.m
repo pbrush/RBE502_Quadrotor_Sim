@@ -8,13 +8,13 @@ function [xtraj, ttraj, terminate_cond] = test_trajectory(start, stop, map, path
 % vis   - true for displaying visualization
 
 %trajhandle    = @jump;
-%trajhandle    = @circle;
-trajhandle    = @diamond;
+trajhandle    = @circle;
+% trajhandle    = @diamond;
 
 %Controller and trajectory generator handles
-%controlhandle = @pid_controller;
-%controlhandle = @(qd, t, qn, params)lqr_controller(qd, t, qn, params, trajhandle);
-controlhandle = @(qd, t, qn, params)mpc_controller(qd, t, qn, params, trajhandle);
+% controlhandle = @pid_controller;
+controlhandle = @(qd, t, qn, params)lqr_controller(qd, t, qn, params, trajhandle);
+% controlhandle = @(qd, t, qn, params)mpc_controller(qd, t, qn, params, trajhandle);
 
 % Make cell
 if ~iscell(start), start = {start}; end
@@ -43,8 +43,10 @@ end
 fprintf('Initializing figures...\n')
 if vis
     h_fig = figure('Name', 'Environment');
+    view(45, 30);
 else
     h_fig = figure('Name', 'Environment', 'Visible', 'Off');
+    view(45, 30);
 end
 if nquad == 1
     %plot_path(map, finalpath);
@@ -82,8 +84,13 @@ vel_tol  = 0.05; % m/s
 
 x = x0;        % state
 
-%% ************************* RUN SIMULATION *************************
+% ********************** RUN SIMULATION *************************
 fprintf('Simulation Running....\n')
+
+% Initialize GIF parameters
+gif_filename = 'PID_Circle_Simulation.gif';
+gif_delay_time = 0.1; % Adjust frame delay time for the GIF
+
 for iter = 1:max_iter
     timeint = time:tstep:time+cstep;
     tic;
@@ -109,12 +116,26 @@ for iter = 1:max_iter
         QP{qn}.UpdateQuadPlot(x{qn}, [desired_state.pos; desired_state.vel], time + cstep);
     end
 
+    % Update title
     set(h_title, 'String', sprintf('iteration: %d, time: %4.2f', iter, time + cstep))
-    time = time + cstep; % Update simulation time
-    t = toc;
-    %fprintf('the time is %d \n',t)
 
-    % Pause to make real-time   
+    % Capture the current figure frame
+    frame = getframe(gcf); % Get current figure as a frame
+    img = frame2im(frame); % Convert frame to an image
+    [imind, cm] = rgb2ind(img, 256); % Convert image to indexed format for GIF
+    if iter == 1
+        % Create GIF on the first frame
+        imwrite(imind, cm, gif_filename, 'gif', 'Loopcount', inf, 'DelayTime', gif_delay_time);
+    else
+        % Append frames to the GIF
+        imwrite(imind, cm, gif_filename, 'gif', 'WriteMode', 'append', 'DelayTime', gif_delay_time);
+    end
+
+    % Update simulation time
+    time = time + cstep;
+
+    % Pause to make real-time
+    t = toc;
     if (t < cstep)
         pause(cstep - t);
     end
@@ -124,7 +145,6 @@ for iter = 1:max_iter
     if terminate_cond
         break
     end
-
 end
 
 fprintf('Simulation Finished....\n')
