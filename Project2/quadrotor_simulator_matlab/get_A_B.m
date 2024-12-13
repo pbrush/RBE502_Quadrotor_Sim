@@ -1,4 +1,3 @@
-
     params = crazyflie();
     syms x_ y_ z_ xdt_ ydt_ zdt_ phi_ theta_ psi_ p_ q_ r_ u1_ u2_ u3_ u4_ dt
     
@@ -6,16 +5,16 @@
     state_var = [x_; y_; z_; xdt_; ydt_; zdt_; phi_; theta_; psi_; p_; q_; r_];
     state_input = [u1_; u2_; u3_; u4_];
 
-    %% Crazyfly Params
-    m = params.mass;
-    g = params.grav;
+    %% Crazyflie Params
+    m   = params.mass;
+    g   = params.grav;
     Ixx = params.I(1,1);
     Iyy = params.I(2,2);
     Izz = params.I(3,3);
 
     transform = [cos(theta_) 0 -cos(phi_)*sin(theta_);
-                      0 1 0;
-             sin(theta_) 0 cos(phi_)*cos(theta_)];
+                           0 1              sin(phi_);
+                 sin(theta_) 0  cos(phi_)*cos(theta_) ];
 
     ang_rates = inv(transform) * [p_; q_; r_];
     
@@ -24,7 +23,7 @@
          zdt_;
          g*(theta_ * cos(psi_) + phi_ * sin(psi_));
          g*(theta_ * sin(psi_) - phi_ * cos(psi_));
-         1/m * u1_ - g;
+         (1/m * u1_) - g;
          ang_rates(1);
          ang_rates(2);
          ang_rates(3);
