@@ -12,8 +12,8 @@ trajhandle     = @circle; traj_str = "Circle";
 % trajhandle    = @diamond; traj_str = "Diamond";
 
 %Controller and trajectory generator handles
-controlhandle = @pid_controller; control_str = "PID";
-% controlhandle = @(qd, t, qn, params)lqr_controller(qd, t, qn, params, trajhandle); control_str = "LQR";
+% controlhandle = @pid_controller; control_str = "PID";
+controlhandle = @(qd, t, qn, params)lqr_controller(qd, t, qn, params, trajhandle); control_str = "LQR";
 % controlhandle = @(qd, t, qn, params)mpc_controller(qd, t, qn, params, trajhandle); control_str = "MPC";
 
 % Make cell

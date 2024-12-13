@@ -9,6 +9,7 @@ function [F, M, trpy, drpy] = lqr_controller(qd, t, qn, params, trajhandle)
 % =================== Your code goes here ===================
 persistent gd;
 persistent icnt;
+persistent prevt;
  if isempty(gd)
      gd = zeros(0,3);
      icnt = 0;
@@ -18,6 +19,7 @@ persistent icnt;
 %% Parameter Initialization
 if ~isempty(t)
     desired_state = trajhandle(t, qn);
+    prevt = 0;
 end
 
 % Inputs
@@ -39,6 +41,11 @@ cur_pos    = qd{qn}.pos;
 cur_vel    = qd{qn}.vel;
 cur_euler  = qd{qn}.euler;
 cur_omega  = qd{qn}.omega;
+dt = t - prevt;
+
+phi   = cur_euler(1);
+theta = cur_euler(2);
+psi   = cur_euler(3);
 
 % Concatenate into current state
 cur_x = [ cur_pos;
@@ -54,19 +61,25 @@ desired_jerk    = trajhandle(t).jerk;
 desired_yaw     = trajhandle(t).yaw;
 desired_yawdot  = trajhandle(t).yawdot;
 
+% Transformation matrix from angular rates to pqr
+transform = [cos(theta) 0 -cos(phi)*sin(theta);
+                      0 1 0;
+             sin(theta) 0 cos(phi)*cos(theta)];
+
 % Get desired phi and theta
 desired_roll   = (1 / g) * (desired_acc(1) * sin(desired_yaw) - desired_acc(2) * cos(desired_yaw));
 desired_pitch  = (1 / g) * (desired_acc(1) * cos(desired_yaw) + desired_acc(2) * sin(desired_yaw));
 
-% Get desired r_dot and p_dot
-desired_phidot   = (1 / g) * ( (desired_jerk(1) * sin(desired_yaw) + desired_acc(1) * desired_yawdot * cos(desired_yaw) ) - ( desired_jerk(1) * cos(desired_yaw) - desired_acc(1) * desired_yawdot * sin(desired_yaw) ) );
-desired_thetadot  = (1 / g) * ( (desired_jerk(1) * cos(desired_yaw) - desired_acc(1) * desired_yawdot * sin(desired_yaw) ) + ( desired_jerk(1) * sin(desired_yaw) + desired_acc(1) * desired_yawdot * cos(desired_yaw) ) );
+% Get desired phi_dot an theta_dot
+desired_phidt   = (1 / g) * ( (desired_jerk(1) * sin(desired_yaw) + desired_acc(1) * desired_yawdot * cos(desired_yaw) ) - ( desired_jerk(1) * cos(desired_yaw) - desired_acc(1) * desired_yawdot * sin(desired_yaw) ) );
+desired_thetadt = (1 / g) * ( (desired_jerk(1) * cos(desired_yaw) - desired_acc(1) * desired_yawdot * sin(desired_yaw) ) + ( desired_jerk(1) * sin(desired_yaw) + desired_acc(1) * desired_yawdot * cos(desired_yaw) ) );
+desired_angular_rates = [desired_phidt; desired_thetadt; desired_yawdot];
 
-% How do we go to PQRdt's from phidt and thetadt?
+% Get desired pqr
+desired_omega = transform * desired_angular_rates;
 
 % Concatenate desired euler angles and desired angular rates
 desired_euler = [ desired_roll; desired_pitch; desired_yaw ];
-desired_omega = [ desired_rolldot; desired_pitchdot; desired_yawdot ];
 
 % Concatenate into desired state
 desired_x = [ desired_pos;
@@ -76,48 +89,44 @@ desired_x = [ desired_pos;
 
 error_x = desired_x - cur_x;
 
-% Horizon
-N = 10;
+r = cur_omega(1);
+p = cur_omega(2);
+q = cur_omega(3);
 
-% Dynamics
-A = zeros(12,12);
-B = zeros(12,4);
+% % Dynamics
+% A matrix
+% A = [0, 0, 0, 1, 0, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0;
+%      0, 0, 0, 0, 1, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0;
+%      0, 0, 0, 0, 0, 1,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0;
+%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                  (981*sin(psi))/100,                                                                                                                (981*cos(psi))/100, (981*phi*cos(psi))/100 - (981*theta*sin(psi))/100,                                                           0, 0,                                                          0;
+%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                 -(981*cos(psi))/100,                                                                                                                (981*sin(psi))/100, (981*theta*cos(psi))/100 + (981*phi*sin(psi))/100,                                                           0, 0,                                                          0;
+%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0;
+%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                                   0,                                       (r*cos(theta))/(cos(theta)^2 + sin(theta)^2) - (p*sin(theta))/(cos(theta)^2 + sin(theta)^2),                                                 0,                    cos(theta)/(cos(theta)^2 + sin(theta)^2), 0,                   sin(theta)/(cos(theta)^2 + sin(theta)^2);
+%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 1,                                                          0;
+%      0, 0, 0, 0, 0, 0, (r*cos(theta)*(sin(phi)*cos(theta)^2 + sin(phi)*sin(theta)^2))/(cos(phi)*cos(theta)^2 + cos(phi)*sin(theta)^2)^2 - (p*sin(theta)*(sin(phi)*cos(theta)^2 + sin(phi)*sin(theta)^2))/(cos(phi)*cos(theta)^2 + cos(phi)*sin(theta)^2)^2, - (p*cos(theta))/(cos(phi)*cos(theta)^2 + cos(phi)*sin(theta)^2) - (r*sin(theta))/(cos(phi)*cos(theta)^2 + cos(phi)*sin(theta)^2),                                                 0, -sin(theta)/(cos(phi)*cos(theta)^2 + cos(phi)*sin(theta)^2), 0, cos(theta)/(cos(phi)*cos(theta)^2 + cos(phi)*sin(theta)^2);
+%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0;
+%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0;
+%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0];
+% 
+% B = [    0,                                      0,                                      0,                                      0;
+%          0,                                      0,                                      0,                                      0;
+%          0,                                      0,                                      0,                                      0;
+%          0,                                      0,                                      0,                                      0;
+%          0,                                      0,                                      0,                                      0;
+%      100/3,                                      0,                                      0,                                      0;
+%          0,                                      0,                                      0,                                      0;
+%          0,                                      0,                                      0,                                      0;
+%          0,                                      0,                                      0,                                      0;
+%          0, 590295810358705651712/8441230088129491,                                      0,                                      0;
+%          0,                                      0, 590295810358705651712/8441230088129491,                                      0;
+%          0,                                      0,                                      0, 295147905179352825856/8529774459683297];
 
-%    x y z xdt ydt zdt phi the psi   p   q   r
-A = [0 0 0   1   0   0   0   0   0   0   0   0;     % xdt
-     0 0 0   0   1   0   0   0   0   0   0   0;     % ydt
-     0 0 0   0   0   1   0   0   0   0   0   0;     % zdt
-     0 0 0   0   0   0   0   0   0   0   0   0;     % xddt
-     0 0 0   0   0   0   0   0   0   0   0   0;     % yddt
-     0 0 0   0   0   0   0   0   0   0   0   0;     % zddt
-     0 0 0   0   0   0   0   0   0   1   0   0;     % phidt
-     0 0 0   0   0   0   0   0   0   0   1   0;     % thetadt
-     0 0 0   0   0   0   0   0   0   0   0   1;     % psidt
-     0 0 0   0   0   0   0   0   0   0   0   0;     % pdt
-     0 0 0   0   0   0   0   0   0   0   0   0;     % qdt
-     0 0 0   0   0   0   0   0   0   0   0   0;];   % rdt
+desired_u = [1/m; 0; 0; 0];
 
-%      F     M1     M2     M3
-B = [  0      0      0      0;     % xdt
-       0      0      0      0;     % ydt
-     1/m      0      0      0;     % zdt
-       0      0      0      0;     % xddt
-       0      0      0      0;     % yddt
-       0      0      0      0;     % zddt
-       0      0      0      0;     % phi   = p?
-       0      0      0      0;     % theta = q?
-       0      0      0      0;     % psi   = r?
-       0  1/Ixx      0      0;     % pdt
-       0      0  1/Iyy      0;     % qdt
-       0      0      0  1/Izz;];   % rdt
-
-A = zeros(12);
-B = zeros(12, 4);
-
-
+[A, B] = get_A_B(desired_x, desired_u, params, dt);
 
 % Q and R
-Q = diag([1 1 1 1 1 1 1 1 1 1 1 1]);
+Q = diag([10 10 10 1 1 1 1 1 1 1 1 1]);
 R = diag([1 1 1 1]);
 
 % Solve for the gains
@@ -133,5 +142,8 @@ M = u(2:4);
 % Output trpy and drpy as in hardware
 trpy = [0, 0, 0, 0];
 drpy = [0, 0, 0, 0];
+
+disp(t)
+prevt = t;
 
 end

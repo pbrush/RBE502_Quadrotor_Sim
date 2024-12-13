@@ -82,9 +82,9 @@ traj_roll  = (1 / g) * (des_acc(1) * sin(traj_yaw) - des_acc(2) * cos(traj_yaw))
 traj_pitch = (1 / g) * (des_acc(1) * cos(traj_yaw) + des_acc(2) * sin(traj_yaw));
 
 % Get angular errors
-roll_err  = wrapToPi(traj_roll  - cur_euler(1));
+roll_err  = wrapToPi(traj_roll - cur_euler(1));
 pitch_err = wrapToPi(traj_pitch - cur_euler(2));
-yaw_err   = wrapToPi(traj_yaw   - cur_euler(3));
+yaw_err   = wrapToPi(traj_yaw - cur_euler(3));
 
 % Get p, q, and r
 intermediary_mat = [cos(cur_euler(2)) 0 -cos(cur_euler(1))*sin(cur_euler(2));
