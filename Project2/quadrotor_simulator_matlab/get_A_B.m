@@ -31,11 +31,8 @@
          u3_/Iyy;
          u4_/Izz;];
     
-    x_func = state_var + f*dt;
+    x_func = state_var + f * dt;
     
     %% State Equation
     A_jacob = jacobian(x_func, state_var);
     B_jacob = jacobian(x_func, state_input);
-
-    % A = double(subs(A_jacob, state_var_sym, desired_x));
-    % B = double(subs(B_jacob, state_input_sym, desired_u));
