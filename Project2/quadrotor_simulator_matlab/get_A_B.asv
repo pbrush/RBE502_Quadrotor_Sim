@@ -1,46 +1,44 @@
-function [A_jacob, B_jacob] = get_A_B(desired_x, desired_u, dt)
 
-    x = desired_x(1);
-    y = desired_x(2);
-    z = desired_x(3);
-    xdt = desired_x(4);
-    ydt = desired_x(5);
-    zdt = desired_x(6);
-    phi = desired_x(7);
-    theta = desired_x(8);
-    psi = desired_x(9);
-    p = desired_x(10);
-    q = desired_x(11);
-    r = desired_x(12);
+    params = crazyflie();
+    syms x_ y_ z_ xdt_ ydt_ zdt_ phi_ theta_ psi_ p_ q_ r_ u1_ u2_ u3_ u4_
+    
+    state_var = [x_; y_; z_; xdt_; ydt_; zdt_; phi_; theta_; psi_; p_; q_; r_];
+    state_input_sym = [u1_; u2_; u3_; u4_];
 
-    u1 = desired_u(1);
-    u2 = desired_u(2);
-    u3 = desired_u(3);
-    u4 = desired_u(4);
+    m = params.mass;
+    g = params.grav;
+    Ixx = params.I(1,1);
+    Iyy = params.I(2,2);
+    Izz = params.I(3,3);
+
+    transform = [cos(theta) 0 -cos(phi)*sin(theta);
+                      0 1 0;
+             sin(theta) 0 cos(phi)*cos(theta)];
 
     ang_rates = inv(transform) * [p; q; r];
     
     %% State variables
-    state_var = [x; y; z; xdt; ydt; zdt; phi; theta; psi; p; q; r];
-    input_var = [u1; u2; u3; u4;];
+    state_var_num = [x; y; z; xdt; ydt; zdt; phi; theta; psi; p; q; r];
+    input_var_num = [u1; u2; u3; u4;];
     
-    f = [xdt;
-         ydt;
-         zdt;
-         g*(theta * cos(psi) + phi * sin(psi));
-         g*(theta * sin(psi) - phi * cos(psi));
-         1/m * u1 - g;
+    f = [xdt_;
+         ydt_;
+         zdt_;
+         g*(theta_ * cos(psi_) + phi_ * sin(psi_));
+         g*(theta_ * sin(psi_) - phi_ * cos(psi_));
+         1/m * u1_ - g;
          ang_rates(1);
          ang_rates(2);
          ang_rates(3);
-         u2/Ixx;
-         u3/Iyy;
-         u4/Izz;];
+         u2_/Ixx;
+         u3_/Iyy;
+         u4_/Izz;];
     
-    x_func = x + f*dt;
+    x_func = state_var_sym + f*dt;
     
     %% State Equation
-    
-    A_jacob = jacobian(x_func, state_var);
-    B_jacob = jacobian(x_func, input_var);
-end
+    A_jacob = jacobian(x_func, state_var_sym);
+    B_jacob = jacobian(x_func, state_input_sym);
+
+    A = double(subs(A_jacob, state_var_sym, desired_x));
+    B = double(subs(B_jacob, state_input_sym, desired_u));

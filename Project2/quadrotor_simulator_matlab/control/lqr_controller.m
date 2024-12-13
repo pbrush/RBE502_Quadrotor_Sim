@@ -19,7 +19,7 @@ persistent prevt;
 %% Parameter Initialization
 if ~isempty(t)
     desired_state = trajhandle(t, qn);
-    prevt = 0;
+    prevt = 0.1;
 end
 
 % Inputs
@@ -32,16 +32,16 @@ I = params.I;
 invI = params.invI;
 g = params.grav;
 L = params.arm_length;
-Ixx = I(1,1);
-Iyy = I(2,2);
-Izz = I(3,3);
+Ixx = I(1, 1);
+Iyy = I(2, 2);
+Izz = I(3, 3);
 
 % Current Params
 cur_pos    = qd{qn}.pos;
 cur_vel    = qd{qn}.vel;
 cur_euler  = qd{qn}.euler;
 cur_omega  = qd{qn}.omega;
-dt = t - prevt;
+dt         = 0.001; %t - prevt;
 
 phi   = cur_euler(1);
 theta = cur_euler(2);
@@ -63,8 +63,8 @@ desired_yawdot  = trajhandle(t).yawdot;
 
 % Transformation matrix from angular rates to pqr
 transform = [cos(theta) 0 -cos(phi)*sin(theta);
-                      0 1 0;
-             sin(theta) 0 cos(phi)*cos(theta)];
+                      0 1                    0;
+             sin(theta) 0 cos(phi)*cos(theta)  ];
 
 % Get desired phi and theta
 desired_roll   = (1 / g) * (desired_acc(1) * sin(desired_yaw) - desired_acc(2) * cos(desired_yaw));
@@ -93,40 +93,44 @@ r = cur_omega(1);
 p = cur_omega(2);
 q = cur_omega(3);
 
+% Ensure continuity between variable names
+p_ = desired_omega(1);
+q_ = desired_omega(2);
+r_ = desired_omega(3);
+phi_ = desired_roll;
+theta_ = desired_pitch;
+psi_ = desired_yaw;
+
 % % Dynamics
 % A matrix
-% A = [0, 0, 0, 1, 0, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0;
-%      0, 0, 0, 0, 1, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0;
-%      0, 0, 0, 0, 0, 1,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0;
-%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                  (981*sin(psi))/100,                                                                                                                (981*cos(psi))/100, (981*phi*cos(psi))/100 - (981*theta*sin(psi))/100,                                                           0, 0,                                                          0;
-%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                 -(981*cos(psi))/100,                                                                                                                (981*sin(psi))/100, (981*theta*cos(psi))/100 + (981*phi*sin(psi))/100,                                                           0, 0,                                                          0;
-%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0;
-%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                                   0,                                       (r*cos(theta))/(cos(theta)^2 + sin(theta)^2) - (p*sin(theta))/(cos(theta)^2 + sin(theta)^2),                                                 0,                    cos(theta)/(cos(theta)^2 + sin(theta)^2), 0,                   sin(theta)/(cos(theta)^2 + sin(theta)^2);
-%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 1,                                                          0;
-%      0, 0, 0, 0, 0, 0, (r*cos(theta)*(sin(phi)*cos(theta)^2 + sin(phi)*sin(theta)^2))/(cos(phi)*cos(theta)^2 + cos(phi)*sin(theta)^2)^2 - (p*sin(theta)*(sin(phi)*cos(theta)^2 + sin(phi)*sin(theta)^2))/(cos(phi)*cos(theta)^2 + cos(phi)*sin(theta)^2)^2, - (p*cos(theta))/(cos(phi)*cos(theta)^2 + cos(phi)*sin(theta)^2) - (r*sin(theta))/(cos(phi)*cos(theta)^2 + cos(phi)*sin(theta)^2),                                                 0, -sin(theta)/(cos(phi)*cos(theta)^2 + cos(phi)*sin(theta)^2), 0, cos(theta)/(cos(phi)*cos(theta)^2 + cos(phi)*sin(theta)^2);
-%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0;
-%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0;
-%      0, 0, 0, 0, 0, 0,                                                                                                                                                                                                                                   0,                                                                                                                                 0,                                                 0,                                                           0, 0,                                                          0];
-% 
-% B = [    0,                                      0,                                      0,                                      0;
-%          0,                                      0,                                      0,                                      0;
-%          0,                                      0,                                      0,                                      0;
-%          0,                                      0,                                      0,                                      0;
-%          0,                                      0,                                      0,                                      0;
-%      100/3,                                      0,                                      0,                                      0;
-%          0,                                      0,                                      0,                                      0;
-%          0,                                      0,                                      0,                                      0;
-%          0,                                      0,                                      0,                                      0;
-%          0, 590295810358705651712/8441230088129491,                                      0,                                      0;
-%          0,                                      0, 590295810358705651712/8441230088129491,                                      0;
-%          0,                                      0,                                      0, 295147905179352825856/8529774459683297];
-
-desired_u = [1/m; 0; 0; 0];
-
-[A, B] = get_A_B(desired_x, desired_u, params, dt);
+A = [1, 0, 0, dt,  0,  0,                                                                                                                                                                                                                                                            0,                                                                                                                                                 0,                                                          0,                                                                     0,  0,                                                                    0;
+     0, 1, 0,  0, dt,  0,                                                                                                                                                                                                                                                            0,                                                                                                                                                 0,                                                          0,                                                                     0,  0,                                                                    0;
+     0, 0, 1,  0,  0, dt,                                                                                                                                                                                                                                                            0,                                                                                                                                                 0,                                                          0,                                                                     0,  0,                                                                    0;
+     0, 0, 0,  1,  0,  0,                                                                                                                                                                                                                                       (981*dt*sin(psi_))/100,                                                                                                                            (981*dt*cos(psi_))/100, dt*((981*phi_*cos(psi_))/100 - (981*theta_*sin(psi_))/100),                                                                     0,  0,                                                                    0;
+     0, 0, 0,  0,  1,  0,                                                                                                                                                                                                                                      -(981*dt*cos(psi_))/100,                                                                                                                            (981*dt*sin(psi_))/100, dt*((981*theta_*cos(psi_))/100 + (981*phi_*sin(psi_))/100),                                                                     0,  0,                                                                    0;
+     0, 0, 0,  0,  0,  1,                                                                                                                                                                                                                                                            0,                                                                                                                                                 0,                                                          0,                                                                     0,  0,                                                                    0;
+     0, 0, 0,  0,  0,  0,                                                                                                                                                                                                                                                            1,                                          dt*((r_*cos(theta_))/(cos(theta_)^2 + sin(theta_)^2) - (p_*sin(theta_))/(cos(theta_)^2 + sin(theta_)^2)),                                                          0,                      (dt*cos(theta_))/(cos(theta_)^2 + sin(theta_)^2),  0,                     (dt*sin(theta_))/(cos(theta_)^2 + sin(theta_)^2);
+     0, 0, 0,  0,  0,  0,                                                                                                                                                                                                                                                            0,                                                                                                                                                 1,                                                          0,                                                                     0, dt,                                                                    0;
+     0, 0, 0,  0,  0,  0, dt*((r_*cos(theta_)*(sin(phi_)*cos(theta_)^2 + sin(phi_)*sin(theta_)^2))/(cos(phi_)*cos(theta_)^2 + cos(phi_)*sin(theta_)^2)^2 - (p_*sin(theta_)*(sin(phi_)*cos(theta_)^2 + sin(phi_)*sin(theta_)^2))/(cos(phi_)*cos(theta_)^2 + cos(phi_)*sin(theta_)^2)^2), -dt*((p_*cos(theta_))/(cos(phi_)*cos(theta_)^2 + cos(phi_)*sin(theta_)^2) + (r_*sin(theta_))/(cos(phi_)*cos(theta_)^2 + cos(phi_)*sin(theta_)^2)),                                                          1, -(dt*sin(theta_))/(cos(phi_)*cos(theta_)^2 + cos(phi_)*sin(theta_)^2),  0, (dt*cos(theta_))/(cos(phi_)*cos(theta_)^2 + cos(phi_)*sin(theta_)^2);
+     0, 0, 0,  0,  0,  0,                                                                                                                                                                                                                                                            0,                                                                                                                                                 0,                                                          0,                                                                     1,  0,                                                                    0;
+     0, 0, 0,  0,  0,  0,                                                                                                                                                                                                                                                            0,                                                                                                                                                 0,                                                          0,                                                                     0,  1,                                                                    0;
+     0, 0, 0,  0,  0,  0,                                                                                                                                                                                                                                                            0,                                                                                                                                                 0,                                                          0,                                                                     0,  0,                                                                    1 ];
+ 
+B = [         0,                                           0,                                           0,                                           0;
+              0,                                           0,                                           0,                                           0;
+              0,                                           0,                                           0,                                           0;
+              0,                                           0,                                           0,                                           0;
+              0,                                           0,                                           0,                                           0;
+     (100*dt)/3,                                           0,                                           0,                                           0;
+              0,                                           0,                                           0,                                           0;
+              0,                                           0,                                           0,                                           0;
+              0,                                           0,                                           0,                                           0;
+              0, (590295810358705651712*dt)/8441230088129491,                                           0,                                           0;
+              0,                                           0, (590295810358705651712*dt)/8441230088129491,                                           0;
+              0,                                           0,                                           0, (295147905179352825856*dt)/8529774459683297];
 
 % Q and R
-Q = diag([10 10 10 1 1 1 1 1 1 1 1 1]);
+Q = diag([1 1 1 1 1 1 1 1 1 1 1 1]);
 R = diag([1 1 1 1]);
 
 % Solve for the gains
