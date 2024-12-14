@@ -7,14 +7,14 @@ function [xtraj, ttraj, terminate_cond] = test_trajectory(start, stop, map, path
 % path  - n x 3 matrix path planned by your dijkstra algorithm
 % vis   - true for displaying visualization
 
-%trajhandle     = @jump; traj_str = "Jump";
+% trajhandle     = @jump; traj_str = 'Jump';
 trajhandle     = @circle; traj_str = 'Circle';
-% trajhandle    = @diamond; traj_str = "Diamond";
+% trajhandle    = @diamond; traj_str = 'Diamond';
 
 %Controller and trajectory generator handles
-% controlhandle = @pid_controller; control_str = "PID";
-controlhandle = @(qd, t, qn, params)lqr_controller(qd, t, qn, params, trajhandle); control_str = 'LQR';
-% controlhandle = @(qd, t, qn, params)mpc_controller(qd, t, qn, params, trajhandle); control_str = "MPC";
+controlhandle = @pid_controller; control_str = 'PID';
+% controlhandle = @(qd, t, qn, params)lqr_controller(qd, t, qn, params, trajhandle); control_str = 'LQR';
+% controlhandle = @(qd, t, qn, params)mpc_controller(qd, t, qn, params, trajhandle); control_str = 'MPC';
 
 % Make cell
 if ~iscell(start), start = {start}; end
