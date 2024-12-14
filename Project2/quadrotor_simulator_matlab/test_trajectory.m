@@ -8,12 +8,12 @@ function [xtraj, ttraj, terminate_cond] = test_trajectory(start, stop, map, path
 % vis   - true for displaying visualization
 
 %trajhandle     = @jump; traj_str = "Jump";
-trajhandle     = @circle; traj_str = "Circle";
+trajhandle     = @circle; traj_str = 'Circle';
 % trajhandle    = @diamond; traj_str = "Diamond";
 
 %Controller and trajectory generator handles
 % controlhandle = @pid_controller; control_str = "PID";
-controlhandle = @(qd, t, qn, params)lqr_controller(qd, t, qn, params, trajhandle); control_str = "LQR";
+controlhandle = @(qd, t, qn, params)lqr_controller(qd, t, qn, params, trajhandle); control_str = 'LQR';
 % controlhandle = @(qd, t, qn, params)mpc_controller(qd, t, qn, params, trajhandle); control_str = "MPC";
 
 % Make cell
@@ -88,7 +88,7 @@ x = x0;        % state
 fprintf('Simulation Running....\n')
 
 % Initialize GIF parameters
-gif_filename = control_str + "_" + traj_str + "_Simulation2.gif";
+gif_filename = control_str + "_" + traj_str + "_Simulation.gif";
 gif_delay_time = 0.1; % Adjust frame delay time for the GIF
 
 for iter = 1:max_iter
@@ -159,6 +159,10 @@ end
 
 % Plot the saved position and velocity of each robot
 if vis
+    % Sanitize control_str and traj_str to make valid filenames
+    control_str_sanitized = regexprep(control_str, '[<>:"/\|?*]', '_');
+    traj_str_sanitized = regexprep(traj_str, '[<>:"/\|?*]', '_');
+    
     for qn = 1:nquad
         % Truncate saved variables
         QP{qn}.TruncateHist();
@@ -167,15 +171,16 @@ if vis
         h_pos{qn} = figure('Name', ['Quad ' num2str(qn) ' : position']);
         plot_state(h_pos{qn}, QP{qn}.state_hist(1:3,:), QP{qn}.time_hist, 'pos', 'vic');
         plot_state(h_pos{qn}, QP{qn}.state_des_hist(1:3,:), QP{qn}.time_hist, 'pos', 'des');
-        saveas(h_pos{qn}, ['Quad_' num2str(qn) '_position.png']); % Save the position plot
+        saveas(h_pos{qn}, [control_str_sanitized '_' traj_str_sanitized '_Quad_' num2str(qn) '_position.png']); % Save the position plot
         
         % Plot velocity for each quad
         h_vel{qn} = figure('Name', ['Quad ' num2str(qn) ' : velocity']);
         plot_state(h_vel{qn}, QP{qn}.state_hist(4:6,:), QP{qn}.time_hist, 'vel', 'vic');
         plot_state(h_vel{qn}, QP{qn}.state_des_hist(4:6,:), QP{qn}.time_hist, 'vel', 'des');
-        saveas(h_vel{qn}, ['Quad_' num2str(qn) '_velocity.png']); % Save the velocity plot
+        saveas(h_vel{qn}, [control_str_sanitized '_' traj_str_sanitized '_Quad_' num2str(qn) '_velocity.png']); % Save the velocity plot
     end
 end
+
 
 
 end
